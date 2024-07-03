@@ -1,24 +1,32 @@
 const std = @import("std");
+const posix = std.posix;
+const net = std.net;
+const stdout = std.io.getStdOut().writer();
+
+// For UDP server, socket -> bind -> sendto <=> recvfrom
 
 pub fn main() !void {
-    // Prints to stderr (it's a shortcut based on `std.io.getStdErr()`)
-    std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
+    // a UDP socket
+    const sockfd = try posix.socket(posix.AF.INET, posix.SOCK.DGRAM, 0);
+    errdefer posix.close(sockfd);
+    defer posix.close(sockfd);
 
-    // stdout is for the actual output of your application, for example if you
-    // are implementing gzip, then only the compressed bytes should be sent to
-    // stdout, not any debugging messages.
-    const stdout_file = std.io.getStdOut().writer();
-    var bw = std.io.bufferedWriter(stdout_file);
-    const stdout = bw.writer();
+    // reuse the address
+    try posix.setsockopt(sockfd, posix.SOL.SOCKET, posix.SO.REUSEADDR, &std.mem.toBytes(@as(c_int, 1)));
 
-    try stdout.print("Run `zig build test` to run the tests.\n", .{});
+    // bind to the localhost with given port
+    const address = try net.Address.resolveIp("127.0.0.1", 2053);
+    const sockaddr = @as(posix.sockaddr, address.any);
+    try posix.bind(sockfd, &sockaddr, @sizeOf(posix.sockaddr.in));
 
-    try bw.flush(); // don't forget to flush!
-}
+    var client_address: posix.sockaddr = undefined;
+    var client_address_len: posix.socklen_t = @sizeOf(posix.sockaddr.in);
+    var buf: [1024]u8 = undefined;
+    @memset(&buf, 0);
 
-test "simple test" {
-    var list = std.ArrayList(i32).init(std.testing.allocator);
-    defer list.deinit(); // try commenting this out and see if zig detects the memory leak!
-    try list.append(42);
-    try std.testing.expectEqual(@as(i32, 42), list.pop());
+    // recieve from client
+    // TODO: currently pipe(|) from print() method below is going to new line.
+    // Figure out why that is happening. Might be because of 'nc' (but highly doubt it as of now)
+    const rl = try posix.recvfrom(sockfd, &buf, 0, &client_address, &client_address_len);
+    try stdout.print("recieved: {s} | bytes: {d}\n", .{buf, rl});
 }
