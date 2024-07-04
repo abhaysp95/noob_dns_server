@@ -27,4 +27,8 @@ pub fn main() !void {
     // recieve from client
     const rl = try posix.recvfrom(sockfd, &buf, 0, &client_address, &client_address_len);
     try stdout.print("recieved: {s} | bytes: {d}\n", .{buf, rl});
+
+    // send to client
+    var msg = [_:0]u8{};  // null terminated empty string
+    _ = try posix.sendto(sockfd, &msg, 0, &client_address, client_address_len);
 }
