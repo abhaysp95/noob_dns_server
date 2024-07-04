@@ -21,12 +21,10 @@ pub fn main() !void {
 
     var client_address: posix.sockaddr = undefined;
     var client_address_len: posix.socklen_t = @sizeOf(posix.sockaddr.in);
-    var buf: [1024]u8 = undefined;
+    var buf: [128]u8 = undefined;
     @memset(&buf, 0);
 
     // recieve from client
-    // TODO: currently pipe(|) from print() method below is going to new line.
-    // Figure out why that is happening. Might be because of 'nc' (but highly doubt it as of now)
     const rl = try posix.recvfrom(sockfd, &buf, 0, &client_address, &client_address_len);
     try stdout.print("recieved: {s} | bytes: {d}\n", .{buf, rl});
 }
